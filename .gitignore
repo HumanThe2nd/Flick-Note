@@ -1,0 +1,27 @@
+# ---- Build output and caches (all regenerated automatically) ----
+**/.pio/
+Unity-Game/[Ll]ibrary/
+Unity-Game/[Tt]emp/
+Unity-Game/[Oo]bj/
+Unity-Game/[Ll]ogs/
+Unity-Game/[Uu]ser[Ss]ettings/
+Unity-Game/[Bb]uild/
+Unity-Game/*.csproj
+Unity-Game/*.sln
+**/.vs/
+__pycache__/
+*.pyc
+
+# ---- Per-device / personal data ----
+# Bluetooth address of your own board, remembered for fast reconnects
+**/.imu_ble_address
+**/.glove_ble_address
+# Compass calibration for your board's magnetic environment
+**/compass_calibration.json
+# CSV recordings made with the dashboard
+**/recordings/
+
+# ---- Raw dump of the board's original firmware ----
+# A full flash image can include saved settings (e.g. Wi-Fi credentials) from
+# whatever ran on the board before. Keep it local.
+Firmware-Backup/*.bin
