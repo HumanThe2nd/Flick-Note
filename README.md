@@ -7,7 +7,7 @@ Motion sensing with an **Adafruit Feather ESP32-S3 Reverse TFT** and an
 |--------|-----------|---------------------|
 | [`BLE-Basic/`](BLE-Basic/README.md) | Simple, readable version. Streams accel, gyro, magnetometer and temperature. Live dashboard, CSV recording, compass calibration, shake/flip detection. **Currently on the board.** | `IMU-Basic` |
 | [`Position-Tracker/`](Position-Tracker/README.md) | Advanced version. 3D position estimate, D1 re-center button, battery level. | `Glove-IMU` |
-| [`Unity-Game/`](Unity-Game/README.md) | **Flick Note**, a Unity rhythm game played with the glove: point at notes and flick your wrist in the arrow's direction for flick notes (inspired by Project Sekai). Uses the BLE-Basic firmware via `BLE-Basic/pc-app/unity_bridge.py`. Build it with `Unity-Game` (or download `FlickNote.exe` from the GitHub Releases). | (uses `IMU-Basic`) |
+| [`Unity-Game/`](Unity-Game/README.md) | **Flick Note**, a Unity rhythm game played by pointing with the glove. Uses the BLE-Basic firmware via `BLE-Basic/pc-app/unity_bridge.py`. Build it with `Unity-Game` (or download `FlickNote.exe` from the GitHub Releases). | (uses `IMU-Basic`) |
 | `Firmware-Backup/` | Full 4 MB image of the board's original firmware (before these projects), plus the original sdkconfig. | – |
 
 Each project has a `firmware/` folder (a PlatformIO project: open it in VS Code

@@ -12,8 +12,7 @@ Each reading from the board becomes one small JSON packet sent to
      "lin":  [x, y, z],         acceleration without gravity, m/s^2, Unity world axes
      "gyro": [x, y, z],         angular velocity, deg/s, Unity axes
      "still": true,             hand is at rest
-     "events": ["flick_up"]}    gestures since the last packet: "flick_up",
-                                "flick_down", "flick_left", "flick_right",
+     "events": ["flick"]}       gestures since the last packet: "flick",
                                 "shake", "flipped face down", "flipped face up"
 
 While there's no data yet, a status packet is sent twice a second:
@@ -211,31 +210,6 @@ class FlickDetector:
         return False
 
 
-def flick_direction(q: Sequence[float], gyro_dps: Sequence[float]) -> str:
-    """Which way a flick moves the fingertips, relative to the room and to
-    where the hand points: "up", "down", "left" or "right".
-
-    The fingers lie along the sensor's +x axis, so the fingertips move along
-    omega x x_hat = (0, wz, -wy) in the hand's own frame. Rotating that into the
-    world frame makes the answer independent of how the wrist is rolled.
-    """
-    gx, gy, gz = gyro_dps
-    tip = rotate(q, (0.0, gz, -gy))                  # fingertip velocity, world frame (z up)
-    f = rotate(q, (1.0, 0.0, 0.0))                   # where the fingers point
-    h = math.hypot(f[0], f[1])
-    if h > 0.2:
-        left = (-f[1] / h, f[0] / h)                 # 90 deg to the left of the pointing heading
-    else:                                            # pointing nearly straight up/down:
-        l = rotate(q, (0.0, 1.0, 0.0))               # use the hand's own left side instead
-        n = math.hypot(l[0], l[1]) or 1.0
-        left = (l[0] / n, l[1] / n)
-    up = tip[2]
-    lateral = tip[0] * left[0] + tip[1] * left[1]
-    if abs(up) >= abs(lateral):
-        return "up" if up > 0 else "down"
-    return "left" if lateral > 0 else "right"
-
-
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
@@ -295,11 +269,7 @@ class Bridge:
         if self.motion.state == "still":
             # Keep tracking slow changes in the gyro offset while at rest.
             self.gyro_bias = [b + 0.01 * (g - b) for b, g in zip(self.gyro_bias, r.gyro)]
-        # While the hand accelerates hard (e.g. mid-flick), the accelerometer no
-        # longer shows which way is down, so don't let it correct the tilt.
-        a_norm = math.sqrt(sum(a * a for a in r.accel))
-        steady = abs(a_norm - self.gravity) < 0.25 * self.gravity
-        self.filter.update([g * DEG for g in gyro_dps], r.accel if steady else (0.0, 0.0, 0.0), mag, dt)
+        self.filter.update([g * DEG for g in gyro_dps], r.accel, mag, dt)
         q = self.filter.q
 
         # Gravity-free acceleration, in the body frame and world frame.
@@ -308,9 +278,8 @@ class Bridge:
         lin_body = [a - g for a, g in zip(r.accel, g_body)]
         lin_world = rotate(q, lin_body)
         if self.flick.update(r.time_s, gyro_dps):
-            direction = flick_direction(q, gyro_dps)
-            events.append("flick_" + direction)
-            print(f"flick {direction:<5}  ({self.flick.last_speed:.0f} deg/s)", file=sys.stderr)
+            events.append("flick")
+            print(f"flick  ({self.flick.last_speed:.0f} deg/s)", file=sys.stderr)
 
         return {
             "connected": True,

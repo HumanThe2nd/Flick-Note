@@ -172,15 +172,13 @@ public partial class RhythmGame
 
     private void CreateNoteVisual(Note n)
     {
-        // Point notes: a pale spinning cube. Flick notes: a bright red orb with a
-        // glowing arrow pointing the way to flick.
-        bool flick = n.type == NoteType.Flick;
-        Color c = flick ? LaneColors[n.lane] : NoteColor(n.lane);
-        var go = GameObject.CreatePrimitive(flick ? PrimitiveType.Sphere : PrimitiveType.Cube);
-        go.name = $"{n.type}_{LaneNames[n.lane]}_{n.time:F2}";
+        // Every note looks the same: a pale spinning cube, tinted by its lane.
+        Color c = NoteColor(n.lane);
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        go.name = $"Note_{LaneNames[n.lane]}_{n.time:F2}";
         Destroy(go.GetComponent<Collider>());
         go.transform.SetParent(transform, false);
-        go.transform.localScale = Vector3.one * (flick ? 0.26f : 0.22f);
+        go.transform.localScale = Vector3.one * 0.22f;
         go.GetComponent<Renderer>().material = new Material(_unlit) { color = c };
 
         var trail = go.AddComponent<TrailRenderer>();
@@ -199,18 +197,7 @@ public partial class RhythmGame
         var halo = Halo("Glow", Vector3.zero, 2.6f);
         halo.SetParent(go.transform, false);
         halo.localPosition = Vector3.zero;
-        SetHalo(halo, c * (flick ? 0.8f : 0.55f));
-
-        if (flick)
-        {
-            // Arrow in front of the orb; the note is turned each frame so the
-            // arrow's local +Y points along the lane on screen.
-            var arrow = NeonFX.Line(go.transform, "FlickArrow", _glowLine, Theme.Perfect, 0.045f, 3);
-            arrow.useWorldSpace = false;
-            arrow.SetPosition(0, new Vector3(-0.85f, -0.15f, -0.7f));
-            arrow.SetPosition(1, new Vector3(0f, 0.8f, -0.7f));
-            arrow.SetPosition(2, new Vector3(0.85f, -0.15f, -0.7f));
-        }
+        SetHalo(halo, c * 0.55f);
 
         go.SetActive(false);
         n.go = go;
@@ -267,7 +254,7 @@ public partial class RhythmGame
             _approach[i].enabled = show;
             if (!show) continue;
             float u = Mathf.Clamp01(dt / lead);        // 1 → 0 as the beat arrives
-            Color c = next.type == NoteType.Flick ? LaneColors[i] : NoteColor(i);
+            Color c = NoteColor(i);
             c.a = Mathf.Lerp(1f, 0.15f, u);
             _approach[i].startColor = _approach[i].endColor = c;
             NeonFX.SetCircle(_approach[i], _laneHit[i], _laneDir[i], RingRadius * (1f + 2.2f * u));
@@ -289,10 +276,7 @@ public partial class RhythmGame
                 n.go.SetActive(true);
                 n.trail.Clear();                       // don't streak in from where it was created
             }
-            if (n.type == NoteType.Flick)
-                n.go.transform.rotation = Quaternion.LookRotation(n.go.transform.position - _eye, _laneOut[n.lane]);
-            else
-                n.go.transform.Rotate(90f * Time.deltaTime, 200f * Time.deltaTime, 0f);
+            n.go.transform.Rotate(90f * Time.deltaTime, 200f * Time.deltaTime, 0f);
             var halo = n.go.transform.GetChild(0);
             halo.rotation = Quaternion.LookRotation(halo.position - _eye);
         }

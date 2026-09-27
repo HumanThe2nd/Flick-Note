@@ -1,9 +1,9 @@
 # Unity-Game: Flick Note
 
 A rhythm game controlled by the IMU glove, built around what the glove does
-best: **pointing** and **wrist flicks** (orientation and rotation speed, both
-accurate and instant). Inspired by Project Sekai's flick notes. It never relies
-on absolute hand position, which an IMU can't measure without drift.
+best: **pointing** (orientation, accurate and instant). A wrist flick starts
+the song. It never relies on absolute hand position, which an IMU can't
+measure without drift.
 
 ## How to play
 
@@ -24,24 +24,18 @@ on absolute hand position, which an IMU can't measure without drift.
 
 Notes fly toward you in four lanes: **up, down, left, right**.
 
-| Note | Looks like | What to do |
-|------|-----------|------------|
-| NOTE | pale spinning cube | **point** at its lane (follow the laser) when it reaches the ring |
-| FLICK NOTE | red orb with an arrow | **flick your wrist in the arrow's direction** on the beat, from anywhere; aim doesn't matter |
-
-Flick direction is measured from how your fingertips move in the room (up,
-down, left, right), so it works whichever way your wrist is rolled. A flick in
-the wrong direction shows WRONG WAY. Timing: PERFECT ±70 ms, GOOD ±140 ms.
-About 40% of notes are flick notes (`RhythmGame → Flick Note Share`).
+Every note is the same: a pale spinning cube. **Point at its lane** (follow the
+laser) when it reaches the ring. PERFECT if you're on the lane when it arrives,
+GOOD if you were on it within ±140 ms, otherwise MISS.
 
 The laser beam and white dot show where your hand points. The lane ring you're
 aiming at grows and lights up. Lanes sit 22° (up/down) and 28° (left/right)
 from center, and aiming counts within 14°, so pointing straight ahead aims at
 nothing. Combo multiplier up to x4. A flick (or Enter) starts the song; the
-bridge window prints each flick with its direction and speed.
+bridge window prints each flick with its speed.
 
 **Keys:** `R` re-center · `[` / `]` latency offset −/+10 ms · `Enter` start ·
-`Esc` quit (exe). Without a glove: arrow keys aim, `Space` flicks toward the aimed lane.
+`Esc` quit (exe). Without a glove: arrow keys aim, `Space` starts.
 
 **If hits feel late or early**, adjust the latency offset with `[` `]`. The
 default of 45 ms covers Bluetooth plus the bridge.
@@ -110,3 +104,4 @@ The bot currently scores 78/78 Perfect.
 - Twist notes: rotate the wrist to a shown angle (roll is very accurate).
 - Hold notes: keep pointing along a moving path.
 - Charts that follow a real song (beat-detect or hand-author a note list).
+- Directional flicks: flick up/down/left/right from the gyro axis.

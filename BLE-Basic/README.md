@@ -69,8 +69,8 @@ z ≈ +9.8 m/s².
 
 | field   | unit  | notes |
 |---------|-------|-------|
-| accel   | m/s²  | ±8 g range; includes gravity |
-| gyro    | °/s   | ±2000 °/s range (wrist flicks exceed 500 °/s); ~±1 °/s offset at rest is normal |
+| accel   | m/s²  | ±4 g range; includes gravity |
+| gyro    | °/s   | ±500 °/s range; ~±1 °/s offset at rest is normal |
 | mag     | µT    | Earth's field is 25–65 µT; raw values include board offsets |
 | temp_c  | °C    | chip temperature, a few degrees above room temperature |
 
