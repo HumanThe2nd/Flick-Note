@@ -80,8 +80,8 @@
 #define MAG_CNTL3           0x32
 
 // Conversion factors for the ranges configured in imu_init():
-#define ACCEL_LSB_PER_G     8192.0f    // +/-4 g range
-#define GYRO_LSB_PER_DPS    65.5f      // +/-500 deg/s range
+#define ACCEL_LSB_PER_G     4096.0f    // +/-8 g range
+#define GYRO_LSB_PER_DPS    16.4f      // +/-2000 deg/s range (wrist flicks exceed 500 deg/s)
 #define MAG_UT_PER_LSB      0.15f      // fixed
 #define STANDARD_GRAVITY    9.80665f
 
@@ -184,9 +184,9 @@ static bool imu_init(void)
     // Ranges and filters live in bank 2.
     reg_write(s_icm, ICM_REG_BANK_SEL, 0x20);
     reg_write(s_icm, ICM_GYRO_SMPLRT_DIV, 4);        // 1125 Hz / (1+4) = 225 Hz
-    reg_write(s_icm, ICM_GYRO_CONFIG_1, 0x1B);       // +/-500 deg/s, low-pass filter ~50 Hz
+    reg_write(s_icm, ICM_GYRO_CONFIG_1, 0x1F);       // +/-2000 deg/s, low-pass filter ~50 Hz
     reg_write(s_icm, ICM_ACCEL_SMPLRT_DIV_2, 4);     // 225 Hz
-    reg_write(s_icm, ICM_ACCEL_CONFIG, 0x1B);        // +/-4 g, low-pass filter ~50 Hz
+    reg_write(s_icm, ICM_ACCEL_CONFIG, 0x1D);        // +/-8 g, low-pass filter ~50 Hz
     reg_write(s_icm, ICM_REG_BANK_SEL, 0x00);
 
     // Bypass mode: connect the magnetometer straight to our I2C bus.

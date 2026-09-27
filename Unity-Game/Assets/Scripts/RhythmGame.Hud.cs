@@ -61,7 +61,7 @@ public partial class RhythmGame
 
     private void PrewarmFont()
     {
-        const string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·…●◆◯";
+        const string chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·…●◆◯▲";
         foreach (float sz in TextSizes)
             _font.RequestCharactersInTexture(sz >= 64 ? "FLICKNOTE GO!0123456789SABCD" : chars, Mathf.RoundToInt(sz * S), FontStyle.Bold);
     }
@@ -165,8 +165,8 @@ public partial class RhythmGame
         Color dot;
         if (glove != null && glove.Connected) { label = $"GLOVE CONNECTED  ·  {glove.PacketsPerSecond}/s"; dot = Theme.Accent; }
         else if (glove != null && glove.Status.StartsWith("glove found")) { label = "GLOVE CALIBRATING: HOLD STILL"; dot = Theme.AccentLight; }
-        else if (glove != null && glove.Status.StartsWith("bridge running")) { label = "LOOKING FOR GLOVE…  (keyboard: arrows aim)"; dot = Theme.AccentDeep; }
-        else { label = "NO BRIDGE: KEYBOARD MODE  (arrows aim)"; dot = Theme.Miss; }
+        else if (glove != null && glove.Status.StartsWith("bridge running")) { label = "LOOKING FOR GLOVE…  (keyboard: arrows + Space)"; dot = Theme.AccentDeep; }
+        else { label = "NO BRIDGE: KEYBOARD MODE  (arrows aim, Space flicks)"; dot = Theme.Miss; }
 
         float w = 26 + label.Length * 7.6f;
         Panel(R(14, 14, w, 34), Theme.Panel);
@@ -217,7 +217,7 @@ public partial class RhythmGame
         if (b < CountInBeats - 4)
         {
             Text(Centered(720 * 0.38f, 800, 60), "GET READY", 40, Theme.Text, TextAnchor.MiddleCenter, true);
-            Text(Centered(720 * 0.38f + 58, 800, 30), "point at each note's ring as it arrives", 15, Dim, TextAnchor.MiddleCenter);
+            Text(Centered(720 * 0.38f + 58, 800, 30), "point at pale notes  ·  flick red notes toward the arrow", 15, Dim, TextAnchor.MiddleCenter);
             return;
         }
         string t = b >= CountInBeats ? "GO!" : (CountInBeats - Mathf.FloorToInt(b)).ToString();
@@ -246,9 +246,10 @@ public partial class RhythmGame
         Text(Centered(top + 92, 640, 24), "a rhythm game for your IMU glove", 14, Dim, TextAnchor.MiddleCenter);
 
         float x = (Screen.width / S - 640) / 2f + 70, y = top + 138;
-        MenuRow(x, y + 10, "◆", Theme.AccentLight, "NOTES", "point at the note's ring (follow the laser)");
-        MenuRow(x, y + 50, "◯", Theme.Perfect, "TIMING", "be on the ring when the shrinking circle meets it");
-        MenuRow(x, y + 90, "R", Theme.Text, "RE-CENTER", "point straight ahead and press R");
+        MenuRow(x, y, "◆", Theme.AccentLight, "NOTE", "point at its ring as it arrives (follow the laser)");
+        MenuRow(x, y + 36, "▲", Theme.Accent, "FLICK NOTE", "flick your wrist toward the arrow, from anywhere");
+        MenuRow(x, y + 72, "◯", Theme.Perfect, "TIMING", "hit when the shrinking circle meets the ring");
+        MenuRow(x, y + 108, "R", Theme.Text, "RE-CENTER", "point straight ahead and press R");
 
         float blink = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 4f);
         Text(Centered(top + 300, 640, 36), "FLICK TO START", 22, Theme.WithAlpha(Theme.Accent, blink),

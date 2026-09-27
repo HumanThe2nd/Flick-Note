@@ -2,14 +2,18 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// "Flick Note": a rhythm game played by pointing with the IMU glove.
+/// "Flick Note": a rhythm game for the IMU glove, inspired by Project Sekai's
+/// flick notes.
 ///
-/// Notes fly toward you in four lanes: up, down, left, right. Every note works
-/// the same way: point at its lane (the laser shows where you're pointing) when
-/// it reaches the ring. A wrist flick starts the song.
+/// Notes fly toward you in four lanes: up, down, left, right.
+///   NOTES (pale cubes):     point at the lane (the laser shows where) as the
+///                           note reaches the ring.
+///   FLICK NOTES (red, with an arrow): flick your wrist in the arrow's direction
+///                           on the beat. Where you're pointing doesn't matter.
+/// A flick also starts the song.
 ///
-/// Keys: Enter = start, R = re-center, [ ] = latency offset, Space = start and
-/// arrow keys = aim (for testing without the glove), Esc = quit (in a build).
+/// Keys: Enter = start, R = re-center, [ ] = latency offset, arrow keys = aim and
+/// Space = flick toward the aimed lane (testing without the glove), Esc = quit.
 ///
 /// This file is the game logic. The 3D effects are in RhythmGame.Visuals.cs and
 /// the on-screen HUD in RhythmGame.Hud.cs.
@@ -33,11 +37,15 @@ public partial class RhythmGame : MonoBehaviour
     [Tooltip("Song length in beats (for the generated beat and the chart)")]
     public int lengthBeats = 104;
     public int chartSeed = 7;
+    [Tooltip("Fraction of notes that are flick notes")]
+    [Range(0f, 1f)] public float flickNoteShare = 0.4f;
 
     [Header("Timing")]
     [Tooltip("Seconds to subtract from input times to make up for Bluetooth/bridge delay. Adjust with [ and ].")]
     public float latencyOffset = 0.045f;
-    [Tooltip("Pointing at the lane within this many seconds of the beat still counts (as GOOD)")]
+    [Tooltip("A flick this close to the beat is PERFECT")]
+    public float perfectWindow = 0.07f;
+    [Tooltip("A flick (or pointing at the lane) this close to the beat still counts, as GOOD")]
     public float goodWindow = 0.14f;
     [Tooltip("How long a note takes to fly from spawn to the hit ring")]
     public float noteTravelTime = 1.8f;
@@ -57,11 +65,13 @@ public partial class RhythmGame : MonoBehaviour
 
     private enum State { Menu, Playing, Results }
     private enum Judgement { None, Perfect, Good, Miss }
+    private enum NoteType { Point, Flick }
 
     private class Note
     {
         public float time;
         public int lane;
+        public NoteType type;
         public GameObject go;
         public TrailRenderer trail;
         public bool judged;
@@ -81,6 +91,7 @@ public partial class RhythmGame : MonoBehaviour
     private Quaternion _body = Quaternion.identity;
     private Vector3[] _laneDir;
     private Vector3[] _laneSpawn, _laneHit;
+    private Vector3[] _laneOut;                        // on-screen direction of each lane (flick arrows)
     private Vector3 _aim = Vector3.forward;
     private int _aimedLane = -1;
     private Camera _cam;
@@ -150,11 +161,13 @@ public partial class RhythmGame : MonoBehaviour
         // lane, and fly out to the lane's ring, so their approach is visible.
         _laneSpawn = new Vector3[4];
         _laneHit = new Vector3[4];
+        _laneOut = new Vector3[4];
         Vector3 center = _eye + _body * Vector3.forward * spawnDistance;
         for (int i = 0; i < 4; i++)
         {
             _laneHit[i] = _eye + _laneDir[i] * hitDistance;
             Vector3 lateral = Vector3.ProjectOnPlane(_laneDir[i], _body * Vector3.forward).normalized;
+            _laneOut[i] = lateral;
             _laneSpawn[i] = center + lateral * spawnSpread;
         }
     }
@@ -180,14 +193,15 @@ public partial class RhythmGame : MonoBehaviour
             if (lane != prevLane) repeat = 0;
             prevLane = lane;
 
-            AddNote(songOffset + beat * spb, lane);
+            var type = rng.NextDouble() < flickNoteShare ? NoteType.Flick : NoteType.Point;
+            AddNote(songOffset + beat * spb, lane, type);
             beat += progress < 0.3f ? 2f : 1f;
         }
     }
 
-    private void AddNote(float time, int lane)
+    private void AddNote(float time, int lane, NoteType type)
     {
-        var n = new Note { time = time, lane = lane };
+        var n = new Note { time = time, lane = lane, type = type };
         CreateNoteVisual(n);     // visuals
         _notes.Add(n);
     }
@@ -211,7 +225,7 @@ public partial class RhythmGame : MonoBehaviour
         if (KeyInput.Pressed(KeyInput.K.Escape)) Application.Quit();
         if (KeyInput.Pressed(KeyInput.K.LeftBracket)) latencyOffset -= 0.01f;
         if (KeyInput.Pressed(KeyInput.K.RightBracket)) latencyOffset += 0.01f;
-        if (KeyInput.Pressed(KeyInput.K.Space)) OnStrike();
+        if (KeyInput.Pressed(KeyInput.K.Space)) OnFlick(_aimedLane);   // keyboard: flick toward the aimed lane
         if (KeyInput.Pressed(KeyInput.K.Enter) && _state != State.Playing) StartSong();
 
         UpdateAim();
@@ -219,6 +233,7 @@ public partial class RhythmGame : MonoBehaviour
         if (_state == State.Playing)
         {
             UpdateSongTime();
+            if (_bot) BotFlick();
             UpdateNotes();
             if (_songTime > SongLength + 1f)
             {
@@ -253,8 +268,9 @@ public partial class RhythmGame : MonoBehaviour
         }
     }
 
-    // Every note: PERFECT if you're pointing at its lane when it reaches the
-    // ring, GOOD if you pointed at it within goodWindow of the beat, else MISS.
+    // Point notes: PERFECT if you're pointing at the lane when the note reaches
+    // the ring, GOOD if you pointed at it within goodWindow of the beat, else MISS.
+    // Flick notes are judged in OnFlick; here they only miss when too late.
     private void UpdateNotes()
     {
         float now = _songTime - latencyOffset;         // allow for Bluetooth delay
@@ -262,6 +278,11 @@ public partial class RhythmGame : MonoBehaviour
         {
             if (n.judged) continue;
             float dt = n.time - now;                   // seconds until the note reaches the ring
+            if (n.type == NoteType.Flick)
+            {
+                if (dt < -goodWindow) Judge(n, Judgement.Miss);
+                continue;
+            }
             if (Mathf.Abs(dt) <= goodWindow && _aimedLane == n.lane) n.aimedInWindow = true;
             if (dt <= 0f && _aimedLane == n.lane) Judge(n, Judgement.Perfect);
             else if (dt < -goodWindow) Judge(n, n.aimedInWindow ? Judgement.Good : Judgement.Miss);
@@ -270,14 +291,18 @@ public partial class RhythmGame : MonoBehaviour
 
     // ---- input ------------------------------------------------------------------
 
+    // The bridge sends "flick_up", "flick_down", "flick_left" or "flick_right"
+    // (older bridges send just "flick", which counts as any direction).
     private void OnGesture(string gesture)
     {
-        if (gesture == "flick") OnStrike();
+        if (!gesture.StartsWith("flick")) return;
+        int dir = System.Array.IndexOf(LaneNames, gesture.Length > 6 ? gesture.Substring(6).ToUpperInvariant() : "");
+        OnFlick(dir);
     }
 
-    // A flick (or Space) starts the song from the menu / results screen. During
-    // play it only animates the glove; notes are scored by pointing.
-    private void OnStrike()
+    // dir: lane index the fingertips moved toward (0 up, 1 down, 2 left, 3 right),
+    // or -1 if unknown (then any direction counts).
+    private void OnFlick(int dir)
     {
         if (Time.unscaledTime - _lastStrike < 0.12f) return;   // ignore a flick's rebound
         _lastStrike = Time.unscaledTime;
@@ -289,6 +314,21 @@ public partial class RhythmGame : MonoBehaviour
         }
         OnStrikeFX();            // visuals
         if (hand != null) hand.PlayStrike();
+
+        // Hit the flick note closest to the beat whose arrow matches the direction.
+        float t = _songTime - latencyOffset;
+        Note best = null;
+        bool wrongWay = false;
+        foreach (var n in _notes)
+        {
+            if (n.judged || n.type != NoteType.Flick || Mathf.Abs(n.time - t) > goodWindow) continue;
+            if (dir >= 0 && n.lane != dir) { wrongWay = true; continue; }
+            if (best == null || Mathf.Abs(n.time - t) < Mathf.Abs(best.time - t)) best = n;
+        }
+        if (best != null)
+            Judge(best, Mathf.Abs(best.time - t) <= perfectWindow ? Judgement.Perfect : Judgement.Good);
+        else if (wrongWay)
+            Pop("WRONG WAY", Theme.AccentLight);
     }
 
     private void Judge(Note n, Judgement j)
@@ -336,13 +376,27 @@ public partial class RhythmGame : MonoBehaviour
         }
     }
 
-    // Bot: point at the lane of the next note, shortly before it arrives.
+    // Bot: point at the lane of the next point note shortly before it arrives,
+    // and flick in the right direction exactly on each flick note.
     private Vector3 BotAim()
     {
         Note next = null;
         foreach (var n in _notes)
-            if (!n.judged && n.time > _songTime - latencyOffset - goodWindow && (next == null || n.time < next.time)) next = n;
+            if (!n.judged && n.type == NoteType.Point && n.time > _songTime - latencyOffset - goodWindow &&
+                (next == null || n.time < next.time)) next = n;
         return next != null && next.time - (_songTime - latencyOffset) < 0.25f ? _laneDir[next.lane] : _body * Vector3.forward;
+    }
+
+    private void BotFlick()
+    {
+        float t = _songTime - latencyOffset;
+        foreach (var n in _notes)
+            if (!n.judged && n.type == NoteType.Flick && t >= n.time && t - n.time < 0.03f)
+            {
+                _lastStrike = -10f;                     // allow back-to-back flicks
+                OnFlick(n.lane);
+                return;
+            }
     }
 
     private void UpdateAutoTest()
